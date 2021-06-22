@@ -1,0 +1,1 @@
+# VIGICOVID-QA-module
