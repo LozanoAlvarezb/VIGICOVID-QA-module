@@ -1,0 +1,5 @@
+pipeline:
+  _target_: qa.QA_Pipeline
+  model: models/BERT-SQUAD-QUAC
+  device: cpu
+  topk: 1
