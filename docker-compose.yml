@@ -1,0 +1,10 @@
+version: '3'
+services:
+  vigicovid_qa_module:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - ./models:/app/models
+    ports:
+      - '9020:8081'
