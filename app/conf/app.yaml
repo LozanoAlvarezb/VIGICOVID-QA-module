@@ -2,8 +2,8 @@ defaults:
   - qa_modules: default_qa.yaml
 
 server:
-  # host: 0.0.0.0
-  host: 127.0.0.1
+  host: 0.0.0.0
+  # host: 127.0.0.1
   port: 8081
 
 app:
@@ -11,7 +11,7 @@ app:
 
 flask:
   ENV: development
-  DEBUG: True
+  DEBUG: False
   TESTING: False
   PROPAGATE_EXCEPTIONS: null
   PRESERVE_CONTEXT_ON_EXCEPTION: null
