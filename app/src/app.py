@@ -1,6 +1,7 @@
 import hydra
 import os, sys
 from omegaconf import DictConfig, OmegaConf, open_dict
+from gevent.pywsgi import WSGIServer
 
 import qa
 
@@ -67,8 +68,10 @@ def main(cfg: DictConfig):
 		del cfg["flask"]
 
 	app.config["config"] = cfg
-	app.run(host=cfg.server.host, port=cfg.server.port)
+	http_server = WSGIServer((cfg.server.host, cfg.server.port), app) 	
+	# app.run(host=cfg.server.host, port=cfg.server.port)
+	http_server.serve_forever()    
 
-	
+
 if __name__ == "__main__":
 	main()

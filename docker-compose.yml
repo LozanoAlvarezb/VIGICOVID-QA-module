@@ -5,6 +5,6 @@ services:
       context: ./
       dockerfile: Dockerfile
     volumes:
-      - ./models:/app/models
+      - ./app/models:/app/models
     ports:
       - '9020:8081'

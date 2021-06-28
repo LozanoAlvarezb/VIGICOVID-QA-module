@@ -10,7 +10,7 @@ app:
   username: ${env:USER}
 
 flask:
-  ENV: development
+  ENV: production
   DEBUG: False
   TESTING: False
   PROPAGATE_EXCEPTIONS: null
