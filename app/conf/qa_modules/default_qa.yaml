@@ -1,5 +1,12 @@
 pipeline:
   _target_: qa.QA_Pipeline
-  model: models/BERT-SQUAD-QUAC
+  model: ../models/BERT-SQUAD-QUAC
   device: cpu
   topk: 1
+
+hf_bert:
+  _target_: qa.QA_HF
+  model: ../models/BERT-SQUAD-QUAC
+  batch_size: 5
+  device: cpu
+  n_best: 1

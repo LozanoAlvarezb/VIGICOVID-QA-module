@@ -1,30 +1,56 @@
 import hydra
+import os, sys
 from omegaconf import DictConfig, OmegaConf, open_dict
 
-from transformers import pipeline
-qa = None
+import qa
+
+# Make this the current work dir
+abspath = os.path.abspath(sys.argv[0])
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 from flask import Flask, current_app, request, jsonify
 app = Flask(__name__)
 
+qa = None
 
 
 @app.route('/span',methods=['POST'])
 def span():
-	cfg = current_app.config["config"]
+	# cfg = current_app.config["config"]
 
 	request_data = request.get_json()
-	app.logger.info("%s", request_data)
-	contexts = [context['body'] for context in request_data['contexts']]
+	app.logger.debug("%s", request_data)
+	ids = [context['id'] for context in request_data['contexts']]
+	scores = [context['score'] for context in request_data['contexts']]
+	contexts = [context['text'] for context in request_data['contexts']]
 	questions = [request_data['question']]*len(contexts)
 
 
-	app.logger.debug("%s", questions)
+	# app.logger.debug("%s", questions)
 
-	span_prediction = qa.span_prediction(questions, contexts)
-	app.logger.debug("%s", span_prediction)
+	try:
+		span_prediction = qa.span_prediction(questions, contexts,ids)
+		app.logger.debug("%s", span_prediction)
 
-	return jsonify(span_prediction)
+		results = [{
+			"id": id,
+			"score": score,
+			"span": [span['start'],span['end']]
+		} for id,score,span in zip(ids,scores,span_prediction)]
+
+		response = {
+			"error": None,
+			"results": sorted(results, key=lambda x: x["score"], reverse=True)
+		}
+
+	except:
+		response = {
+			"error": "Error",
+			"results": None
+		}
+	return jsonify(response)
+
 
 
 
@@ -38,11 +64,11 @@ def main(cfg: DictConfig):
 
 	app.config.from_mapping(cfg.flask)
 	with open_dict(cfg):
-			del cfg["flask"]
+		del cfg["flask"]
 
 	app.config["config"] = cfg
 	app.run(host=cfg.server.host, port=cfg.server.port)
 
 	
 if __name__ == "__main__":
-		main()
+	main()
