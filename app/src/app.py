@@ -22,11 +22,12 @@ def span():
 
 	request_data = request.get_json()
 	app.logger.debug("%s", request_data)
-	ids = [context['id'] for context in request_data['contexts']]
-	scores = [context['score'] for context in request_data['contexts']]
-	contexts = [context['text'] for context in request_data['contexts']]
-	questions = [request_data['question']]*len(contexts)
 
+
+	ids = [context['id'] for question in request_data for context in question['contexts']]
+	scores = [context['score'] for question in request_data for context in question['contexts']]
+	contexts = [context['text'] for question in request_data for context in question['contexts']]
+	questions = [padded_question for question in request_data for padded_question in [question['question']]*len(question['contexts']) ]
 
 	# app.logger.debug("%s", questions)
 
@@ -34,20 +35,28 @@ def span():
 		span_prediction = qa.span_prediction(questions, contexts,ids)
 		app.logger.debug("%s", span_prediction)
 
-		results = [{
+		unsorted_results = {}
+		for id,score,span,question in zip(ids,scores,span_prediction,questions):
+			unsorted_results.setdefault(question, []).append({
 			"id": id,
 			"score": score,
 			"span": [span['start'],span['end']]
-		} for id,score,span in zip(ids,scores,span_prediction)]
+		})
 
+		results = []
+		for question in unsorted_results:
+			results.append({
+				"quesiton": question,
+				"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
+			})
 		response = {
 			"error": None,
-			"results": sorted(results, key=lambda x: x["score"], reverse=True)
+			"results": results
 		}
 
-	except:
+	except :
 		response = {
-			"error": "Error",
+			"error": f"Unexpected error:{sys.exc_info()[0]}",
 			"results": None
 		}
 	return jsonify(response)
@@ -64,13 +73,17 @@ def main(cfg: DictConfig):
 	qa = hydra.utils.instantiate(cfg.qa_modules[cfg.qa])
 
 	app.config.from_mapping(cfg.flask)
-	with open_dict(cfg):
-		del cfg["flask"]
+	# with open_dict(cfg):
+	# 	del cfg["flask"]
 
 	app.config["config"] = cfg
-	http_server = WSGIServer((cfg.server.host, cfg.server.port), app) 	
-	# app.run(host=cfg.server.host, port=cfg.server.port)
-	http_server.serve_forever()    
+	if cfg.flask.ENV == 'production':
+		http_server = WSGIServer((cfg.server.host, cfg.server.port), app) 	
+		http_server.serve_forever()   
+	# debug mode
+	else:
+		app.run(host=cfg.server.host, port=cfg.server.port)
+	 
 
 
 if __name__ == "__main__":
