@@ -42,7 +42,7 @@ def span():
 
 		unsorted_results = {}
 		for q_id,ir_score in zip(span_prediction,ir_scores):
-			q_index,id = q_id.split("-")
+			q_index,id = q_id.split("-",maxsplit=1)
 			question = request_data[int(q_index)]['question']
 			for answer in span_prediction[q_id][:qa_cut]:
 				unsorted_results.setdefault(question, []).append({
@@ -71,11 +71,12 @@ def span():
 			"results": results
 		}
 
-	except :
+	except Exception as e:
 		response = {
-			"error": f"Unexpected error:{sys.exc_info()[0]}",
+			"error": f"Unexpected error:{e}",
 			"results": None
 		}
+		app.logger.critical(e, exc_info=True)
 	return jsonify(response)
 
 
