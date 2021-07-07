@@ -36,46 +36,46 @@ def span():
 
 	# app.logger.debug("%s", questions)
 
-	# try:
-	span_prediction = qa_module.span_prediction(ids, questions, contexts)
-	app.logger.debug("%s", span_prediction)
+	try:
+		span_prediction = qa_module.span_prediction(ids, questions, contexts)
+		app.logger.debug("%s", span_prediction)
 
-	unsorted_results = {}
-	for q_id,ir_score in zip(span_prediction,ir_scores):
-		q_index,id = q_id.split("-")
-		question = request_data[int(q_index)]['question']
-		for answer in span_prediction[q_id][:qa_cut]:
-			unsorted_results.setdefault(question, []).append({
-			"id": id,
-			"text": answer['answer'],
-			"score": (ir_score+answer['score'])/2,
-			"span": [answer['start'],answer['end']]
-		})
+		unsorted_results = {}
+		for q_id,ir_score in zip(span_prediction,ir_scores):
+			q_index,id = q_id.split("-")
+			question = request_data[int(q_index)]['question']
+			for answer in span_prediction[q_id][:qa_cut]:
+				unsorted_results.setdefault(question, []).append({
+				"id": id,
+				"text": answer['answer'],
+				"score": (ir_score+answer['score'])/2,
+				"span": [answer['start'],answer['end']]
+			})
 
-	# for id,ir_score,span,question in zip(ids,ir_ir_scores,span_prediction,questions):
-	# 	unsorted_results.setdefault(question, []).append({
-	# 	"id": id,
-	# 	"text": span['answer'],
-	# 	"score": (ir_score+span['score'])/2,
-	# 	"span": [span['start'],span['end']]
-	# })
+		# for id,ir_score,span,question in zip(ids,ir_ir_scores,span_prediction,questions):
+		# 	unsorted_results.setdefault(question, []).append({
+		# 	"id": id,
+		# 	"text": span['answer'],
+		# 	"score": (ir_score+span['score'])/2,
+		# 	"span": [span['start'],span['end']]
+		# })
 
-	results = []
-	for question in unsorted_results:
-		results.append({
-			"question": question,
-			"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
-		})
-	response = {
-		"error": None,
-		"results": results
-	}
+		results = []
+		for question in unsorted_results:
+			results.append({
+				"question": question,
+				"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
+			})
+		response = {
+			"error": None,
+			"results": results
+		}
 
-	# except :
-	# 	response = {
-	# 		"error": f"Unexpected error:{sys.exc_info()[0]}",
-	# 		"results": None
-	# 	}
+	except :
+		response = {
+			"error": f"Unexpected error:{sys.exc_info()[0]}",
+			"results": None
+		}
 	return jsonify(response)
 
 
