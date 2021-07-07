@@ -13,7 +13,7 @@ os.chdir(dname)
 from flask import Flask, current_app, request, jsonify
 app = Flask(__name__)
 
-qa = None
+qa_module = None
 
 
 @app.route('/span',methods=['POST'])
@@ -23,42 +23,59 @@ def span():
 	request_data = request.get_json()
 	app.logger.debug("%s", request_data)
 
+	# number of answer for each document
+	qa_cut = 1 #request.args.get('qa_cut')
 
-	ids = [context['id'] for question in request_data for context in question['contexts']]
-	scores = [context['score'] for question in request_data for context in question['contexts']]
-	contexts = [context['text'] for question in request_data for context in question['contexts']]
+
 	questions = [padded_question for question in request_data for padded_question in [question['question']]*len(question['contexts']) ]
+	ir_scores = [context['score'] for question in request_data for context in question['contexts']]
+	contexts = [context['text'] for question in request_data for context in question['contexts']]
+	# Combine id with question to cover the case where the same document id is retrieved for different questions
+	ids = [f"{i}-{context['id']}" for i,question in enumerate(request_data) for context in question['contexts']]
+	
 
 	# app.logger.debug("%s", questions)
 
-	try:
-		span_prediction = qa.span_prediction(questions, contexts,ids)
-		app.logger.debug("%s", span_prediction)
+	# try:
+	span_prediction = qa_module.span_prediction(ids, questions, contexts)
+	app.logger.debug("%s", span_prediction)
 
-		unsorted_results = {}
-		for id,score,span,question in zip(ids,scores,span_prediction,questions):
+	unsorted_results = {}
+	for q_id,ir_score in zip(span_prediction,ir_scores):
+		q_index,id = q_id.split("-")
+		question = request_data[int(q_index)]['question']
+		for answer in span_prediction[q_id][:qa_cut]:
 			unsorted_results.setdefault(question, []).append({
 			"id": id,
-			"score": score,
-			"span": [span['start'],span['end']]
+			"text": answer['answer'],
+			"score": (ir_score+answer['score'])/2,
+			"span": [answer['start'],answer['end']]
 		})
 
-		results = []
-		for question in unsorted_results:
-			results.append({
-				"quesiton": question,
-				"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
-			})
-		response = {
-			"error": None,
-			"results": results
-		}
+	# for id,ir_score,span,question in zip(ids,ir_ir_scores,span_prediction,questions):
+	# 	unsorted_results.setdefault(question, []).append({
+	# 	"id": id,
+	# 	"text": span['answer'],
+	# 	"score": (ir_score+span['score'])/2,
+	# 	"span": [span['start'],span['end']]
+	# })
 
-	except :
-		response = {
-			"error": f"Unexpected error:{sys.exc_info()[0]}",
-			"results": None
-		}
+	results = []
+	for question in unsorted_results:
+		results.append({
+			"question": question,
+			"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
+		})
+	response = {
+		"error": None,
+		"results": results
+	}
+
+	# except :
+	# 	response = {
+	# 		"error": f"Unexpected error:{sys.exc_info()[0]}",
+	# 		"results": None
+	# 	}
 	return jsonify(response)
 
 
@@ -69,8 +86,8 @@ def main(cfg: DictConfig):
 	app.logger.info("CFG:")
 	app.logger.info("%s", OmegaConf.to_yaml(cfg))
 	
-	global qa
-	qa = hydra.utils.instantiate(cfg.qa_modules[cfg.qa])
+	global qa_module
+	qa_module = hydra.utils.instantiate(cfg.qa_modules[cfg.qa])
 
 	app.config.from_mapping(cfg.flask)
 	# with open_dict(cfg):

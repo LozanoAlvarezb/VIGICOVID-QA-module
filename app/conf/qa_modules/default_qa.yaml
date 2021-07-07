@@ -7,6 +7,6 @@ pipeline:
 hf_bert:
   _target_: qa.QA_HF
   model: ixa-ehu/SciBERT-SQuAD-QuAC
-  batch_size: 5
+  batch_size: 100
   device: cpu
   n_best: 1
