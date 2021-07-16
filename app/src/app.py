@@ -24,8 +24,9 @@ def span():
 	app.logger.debug("%s", request_data)
 
 	# number of answer for each document
-	qa_cut = 1 #request.args.get('qa_cut')
+	qa_cut = int(request.args.get('qa_cut'))
 
+	app.logger.info("Processing %d questions",len(request_data))
 
 	questions = [padded_question for question in request_data for padded_question in [question['question']]*len(question['contexts']) ]
 	ir_scores = [context['score'] for question in request_data for context in question['contexts']]
@@ -33,12 +34,9 @@ def span():
 	# Combine id with question to cover the case where the same document id is retrieved for different questions
 	ids = [f"{i}-{context['id']}" for i,question in enumerate(request_data) for context in question['contexts']]
 	
-
-	# app.logger.debug("%s", questions)
-
 	try:
 		span_prediction = qa_module.span_prediction(ids, questions, contexts)
-		app.logger.debug("%s", span_prediction)
+		# app.logger.debug("%s", span_prediction)
 
 		unsorted_results = {}
 		for q_id,ir_score in zip(span_prediction,ir_scores):

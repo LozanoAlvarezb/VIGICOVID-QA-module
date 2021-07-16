@@ -29,8 +29,11 @@ class QA_Pipeline:
 
 	def span_prediction(self, ids, questions, contexts):
 		predictions = self.model(question=questions, context=contexts, topk=self.topk, max_answer_len=30)
+
+		if len(ids) == 1:
+			predictions = [predictions]
 		
-		assert len(predictions) == len(ids) * self.topk
+		assert len(predictions) == len(ids) * self.topk, f"Predictions had length {len(predictions)} while it should have {len(ids) * self.topk}\nPredictions: {predictions}"
 
 		id_index = 0
 		eval_predictions = {}
@@ -68,7 +71,10 @@ class QA_HF:
 		self.model.eval()
 
 	# Validation preprocessing
-	def prepare_validation_features(self, examples):
+	def prepare_validation_features(
+		self,
+		examples
+	):
 		# Tokenize our examples with truncation and maybe padding, but keep the overflows using a stride. This results
 		# in one example possible giving several features when a context is long, each of those features having a
 		# context that overlaps a bit the context of the previous feature.
@@ -109,7 +115,12 @@ class QA_HF:
 
 		return tokenized_examples
 
-	def span_prediction(self, ids, questions, contexts):
+	def span_prediction(
+		self,
+		ids,
+		questions,
+		contexts
+	):
 
 		examples = Dataset.from_dict({
 			'id':ids,
@@ -123,6 +134,9 @@ class QA_HF:
 			desc="Running tokenizer on validation dataset",
 			remove_columns=examples.column_names,
 		)		
+
+		logger.debug("Processing %d documents divided into %d features", len(examples), len(features))
+		
 
 		context_sampler = SequentialSampler(features)
 
