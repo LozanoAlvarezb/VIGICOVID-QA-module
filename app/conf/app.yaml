@@ -48,3 +48,5 @@ hydra:
   output_subdir: null
 
 qa: pipeline
+
+qa_cut: 3

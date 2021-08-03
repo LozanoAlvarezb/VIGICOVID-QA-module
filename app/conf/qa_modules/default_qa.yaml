@@ -2,7 +2,7 @@ pipeline:
   _target_: qa.QA_Pipeline
   model: ixa-ehu/SciBERT-SQuAD-QuAC
   device: cpu
-  topk: 1
+  topk: 10
 
 hf_bert:
   _target_: qa.QA_HF

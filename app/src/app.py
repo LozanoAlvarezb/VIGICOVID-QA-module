@@ -18,13 +18,14 @@ qa_module = None
 
 @app.route('/span',methods=['POST'])
 def span():
-	# cfg = current_app.config["config"]
+	cfg = current_app.config["config"]
 
 	request_data = request.get_json()
 	app.logger.debug("%s", request_data)
 
 	# number of answer for each document
-	qa_cut = int(request.args.get('qa_cut'))
+	# qa_cut = int(request.args.get('qa_cut'))
+	qa_cut = int(cfg['qa_cut'])
 
 	app.logger.info("Processing %d questions",len(request_data))
 
