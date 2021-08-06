@@ -1,6 +1,7 @@
 import hydra
 import os, sys
 from omegaconf import DictConfig, OmegaConf, open_dict
+from collections import defaultdict
 from gevent.pywsgi import WSGIServer
 
 import qa
@@ -39,20 +40,32 @@ def span():
 		span_prediction = qa_module.span_prediction(ids, questions, contexts)
 		# app.logger.debug("%s", span_prediction)
 
-		unsorted_results = {}
-		for q_id,ir_score in zip(span_prediction,ir_scores):
-			q_index,id = q_id.split("-",maxsplit=1)
+		sorted_results = defaultdict(list)
+		for q_id, ir_score in zip(span_prediction, ir_scores):
+			q_index, id = q_id.split("-", maxsplit=1)
 			question = request_data[int(q_index)]['question']
-			for answer in span_prediction[q_id][:qa_cut]:
-				unsorted_results.setdefault(question, []).append({
-				"id": id,
-				"text": answer['answer'],
-				"score": (ir_score+answer['score'])/2,
-				"span": [answer['start'],answer['end']]
-			})
+			id_scores = []
+			score_lambda = lambda x: (ir_score + x['score']) /2
+			# avoid duplicates: unique by score, similar spans should
+			# yield similar scores. If span_predictions were already sorted
+			# by score, no need to sort here nor later. ir_score by questions
+			# is a fixed quantity, won't change result
+			for answer in sorted(span_prediction[q_id], key=score_lambda, reverse=True):
+				score = score_lambda(answer)
+				if score not in id_scores and len(id_scores) <= qa_cut:
+					sorted_results[question].append({
+						"id": id,
+						"text": answer['answer'],
+						"score": score,
+						"span": [answer['start'], answer['end']]
+					})
+					id_scores.append(score)
+
+				if len(id_scores) == qa_cut:
+					break
 
 		# for id,ir_score,span,question in zip(ids,ir_ir_scores,span_prediction,questions):
-		# 	unsorted_results.setdefault(question, []).append({
+		# 	sorted_results.setdefault(question, []).append({
 		# 	"id": id,
 		# 	"text": span['answer'],
 		# 	"score": (ir_score+span['score'])/2,
@@ -60,11 +73,12 @@ def span():
 		# })
 
 		results = []
-		for question in unsorted_results:
+		for question in sorted_results:
 			results.append({
 				"question": question,
-				"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
+				"spans": sorted_results[question]
 			})
+
 		response = {
 			"error": None,
 			"results": results
