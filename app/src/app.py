@@ -1,4 +1,5 @@
 import hydra
+import numpy as np
 import os, sys
 from omegaconf import DictConfig, OmegaConf, open_dict
 from gevent.pywsgi import WSGIServer
@@ -30,8 +31,14 @@ def span():
 	app.logger.info("Processing %d questions",len(request_data))
 
 	questions = [padded_question for question in request_data for padded_question in [question['question']]*len(question['contexts']) ]
-	ir_scores = [context['score'] for question in request_data for context in question['contexts']]
 	contexts = [context['text'] for question in request_data for context in question['contexts']]
+	unormalized_ir_scores = [[context['score'] for context in question['contexts']] for question in request_data]
+	ir_scores = []
+	for scores in unormalized_ir_scores:
+		exp_scores = np.exp(scores - np.max(scores))
+		probs = exp_scores / exp_scores.sum()
+		ir_scores.extend(list(probs))
+		
 	# Combine id with question to cover the case where the same document id is retrieved for different questions
 	ids = [f"{i}-{context['id']}" for i,question in enumerate(request_data) for context in question['contexts']]
 	
