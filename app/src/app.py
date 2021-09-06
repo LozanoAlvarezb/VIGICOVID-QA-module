@@ -47,45 +47,38 @@ def span():
 		span_prediction = qa_module.span_prediction(ids, questions, contexts)
 		# app.logger.debug("%s", span_prediction)
 
-		sorted_results = defaultdict(list)
-		for q_id, ir_score in zip(span_prediction, ir_scores):
-			q_index, id = q_id.split("-", maxsplit=1)
+		unsorted_results = {}
+		for q_id,ir_score in zip(span_prediction,ir_scores):
+			q_index,id = q_id.split("-",maxsplit=1)
 			question = request_data[int(q_index)]['question']
-			id_scores = []
-			score_lambda = lambda x: (ir_score + x['score']) /2
-			# avoid duplicates: unique by score, similar spans should
-			# yield similar scores. If span_predictions were already sorted
-			# by score, no need to sort here nor later. ir_score by questions
-			# is a fixed quantity, won't change result
-			for answer in sorted(span_prediction[q_id], key=score_lambda, reverse=True):
-				score = score_lambda(answer)
-				if score not in id_scores and len(id_scores) <= qa_cut:
-					sorted_results[question].append({
-						"id": id,
-						"text": answer['answer'],
-						"score": score,
-						"span": [answer['start'], answer['end']]
-					})
-					id_scores.append(score)
 
-				if len(id_scores) == qa_cut:
+			doc_answers = []
+			for answer in span_prediction[q_id]:
+
+				# Check if the answer overlaps with previous answers
+				if any([max(answer['start'],ranked_answer['span'][0])
+						<= min(answer['end'],ranked_answer['span'][1]) for ranked_answer in doc_answers]):
+					continue
+
+				doc_answers.append({
+					"id": id,
+					"text": answer['answer'],
+					"score": (ir_score+answer['score'])/2,
+					"span": [answer['start'],answer['end']]}
+				)
+				
+				if len(doc_answers)==qa_cut:
 					break
 
-		# for id,ir_score,span,question in zip(ids,ir_ir_scores,span_prediction,questions):
-		# 	sorted_results.setdefault(question, []).append({
-		# 	"id": id,
-		# 	"text": span['answer'],
-		# 	"score": (ir_score+span['score'])/2,
-		# 	"span": [span['start'],span['end']]
-		# })
+			
+			unsorted_results.setdefault(question, []).extend(doc_answers)
 
 		results = []
-		for question in sorted_results:
+		for question in unsorted_results:
 			results.append({
 				"question": question,
-				"spans": sorted_results[question]
+				"spans": sorted(unsorted_results[question], key=lambda x: x["score"], reverse=True)
 			})
-
 		response = {
 			"error": None,
 			"results": results
