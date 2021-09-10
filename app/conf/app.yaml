@@ -50,3 +50,4 @@ hydra:
 qa: pipeline
 
 qa_cut: 3
+sim_threshold: 0.65
