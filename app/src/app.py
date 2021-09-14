@@ -26,9 +26,8 @@ def span():
 	app.logger.debug("%s", request_data)
 
 	# number of answer for each document
-	# qa_cut = int(request.args.get('qa_cut'))
-	qa_cut = int(cfg['qa_cut'])
-	sim_threshold = int(cfg['sim_threshold'])
+	qa_cut = request_data["qa_cut"] if "qa_cut" in request_data else int(cfg['qa_cut'])
+	sim_threshold = float(cfg['sim_threshold'])
 
 	app.logger.info("Processing %d questions",len(request_data))
 
@@ -38,31 +37,7 @@ def span():
 		span_prediction = qa_module.span_prediction(ids, questions, contexts)
 
 		unsorted_results = utils.get_unsorted_results(span_prediction,ir_scores,contexts,request_data,qa_cut)
-		# unsorted_results = {}
-		# for q_id,ir_score in zip(span_prediction,ir_scores):
-		# 	q_index,id = q_id.split("-",maxsplit=1)
-		# 	question = request_data[int(q_index)]['question']
 
-		# 	doc_answers = []
-		# 	for answer in span_prediction[q_id]:
-
-		# 		# Check if the answer overlaps with previous answers
-		# 		if any([max(answer['start'],ranked_answer['span'][0])
-		# 				<= min(answer['end'],ranked_answer['span'][1]) for ranked_answer in doc_answers]):
-		# 			continue
-
-		# 		doc_answers.append({
-		# 			"id": id,
-		# 			"text": answer['answer'],
-		# 			"score": (ir_score+answer['score'])/2,
-		# 			"span": [answer['start'],answer['end']]}
-		# 		)
-				
-		# 		if len(doc_answers)==qa_cut:
-		# 			break
-
-			
-		# 	unsorted_results.setdefault(question, []).extend(doc_answers)
 		results = []
 		for question in unsorted_results:
 
@@ -76,7 +51,7 @@ def span():
 
 			results.append({
 				"question": question,
-				"spans": sorted_results
+				"spans": final_results
 			})
 
 		response = {
